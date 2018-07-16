@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">XMusicPlayer</string>
+
+    <string name="combine_two_strings" translatable="false">%1$s | %2$s</string>
+
+    <string name="error_playing_track">曲目播放错误</string>
+</resources>
