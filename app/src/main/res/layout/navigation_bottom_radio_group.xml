@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadioGroup
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="5dp"
+    android:background="@drawable/shape_navigation_bottom"
+    android:orientation="horizontal">
+
+    <RadioButton
+        android:id="@+id/navigation_Home_RadioButton"
+        android:text="@string/home"
+        style="@style/Navigation_Bottom_RadioButton_Style"/>
+
+    <RadioButton
+        android:id="@+id/navigation_Issue_RadioButton"
+        android:text="@string/issue"
+        style="@style/Navigation_Bottom_RadioButton_Style"/>
+
+    <RadioButton
+        android:id="@+id/navigation_Publish_RadioButton"
+        android:text="@string/publish"
+        style="@style/Navigation_Bottom_RadioButton_Style"/>
+
+    <RadioButton
+        android:id="@+id/navigation_Message_RadioButton"
+        android:text="@string/message"
+        style="@style/Navigation_Bottom_RadioButton_Style"/>
+
+    <RadioButton
+        android:id="@+id/navigation_UserCenter_RadioButton"
+        android:text="@string/userCenter"
+        style="@style/Navigation_Bottom_RadioButton_Style"/>
+
+
+</RadioGroup>

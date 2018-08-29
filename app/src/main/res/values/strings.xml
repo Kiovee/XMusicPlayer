@@ -4,4 +4,10 @@
     <string name="combine_two_strings" translatable="false">%1$s | %2$s</string>
 
     <string name="error_playing_track">曲目播放错误</string>
+
+    <string name="home">主页</string>
+    <string name="issue">发行</string>
+    <string name="publish">发布</string>
+    <string name="message">消息</string>
+    <string name="userCenter">个人中心</string>
 </resources>

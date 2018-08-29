@@ -16,20 +16,22 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
-import android.util.Log;
+import android.widget.Toast;
 
 import com.kiovee.dataloaders.SongLoader;
 import com.kiovee.helpers.MusicPlaybackTrack;
-import com.kiovee.utils.AppUtils;
+import com.kiovee.utils.Logger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.WeakHashMap;
 
 public class MusicPlayer {
 
     private static final WeakHashMap<Context, ServiceBinder> mConnectionMap;
     private static final long[] sEmptyList;
-    public static IRemoteMusicService mService = null;
+    public static IMusicService mService = null;
     private static ContentValues[] mContentValuesCache = null;
 
     static {
@@ -71,7 +73,7 @@ public class MusicPlayer {
         }
     }
 
-    public static final boolean isPlaybackServiceConnected() {
+    public static boolean isPlaybackServiceConnected() {
         return mService != null;
     }
 
@@ -82,10 +84,6 @@ public class MusicPlayer {
             }
         } catch (final RemoteException ignored) {
         }
-    }
-
-    public static void initPlaybackServiceWithSettings(final Context context) {
-
     }
 
     public static void asyncNext(final Context context) {
@@ -107,18 +105,15 @@ public class MusicPlayer {
     public static void playOrPause() {
         try {
             if (mService != null) {
+                Logger.e("音乐播放器播放状态：" + (mService.isPlaying()));
                 if (mService.isPlaying()) {
-                    Log.e("TAG","暂停播放音乐");
                     mService.pause();
                 } else {
-                    Log.e("TAG","开始播放音乐");
                     mService.play();
                 }
-            }else {
-                Log.e("TAG","发生未知错误");
             }
         } catch (final Exception ignored) {
-            Log.e("TAG",ignored.toString());
+            Logger.e("playOrPause:" + ignored.toString());
         }
     }
 
@@ -318,6 +313,17 @@ public class MusicPlayer {
         return -1;
     }
 
+    public static final List<MusicPlaybackTrack> getPlayList(){
+        try {
+            if (mService != null) {
+                return mService.getPlayList();
+            } else {
+            }
+        } catch (final RemoteException ignored) {
+        }
+        return null;
+    }
+
     public static final long[] getQueue() {
         try {
             if (mService != null) {
@@ -439,35 +445,42 @@ public class MusicPlayer {
         }
     }
 
-    public static void playArtist(final Context context, final long artistId, int position, boolean shuffle) {
+    public static void playArtist(final Context context, final List<MusicPlaybackTrack> list,final long artistId, int position, boolean shuffle) {  //播放歌手全部歌曲
         final long[] artistList = getSongListForArtist(context, artistId);
         if (artistList != null) {
-            playAll(context, artistList, position, artistId, AppUtils.IdType.Artist, shuffle);
+            //TODO 需要实现歌手歌曲播放功能
+            //playAll(list, artistList, position, shuffle);
         }
     }
 
-    public static void playAlbum(final Context context, final long albumId, int position, boolean shuffle) {
+    public static void playAlbum(final Context context, final List<MusicPlaybackTrack> list, final long albumId, int position, boolean shuffle) {    //播放全部专辑
         final long[] albumList = getSongListForAlbum(context, albumId);
         if (albumList != null) {
-            playAll(context, albumList, position, albumId, AppUtils.IdType.Album, shuffle);
+            //TODO 需要实现专辑播放功能
+            //playAll(list, albumList, position,shuffle);
         }
     }
 
-    public static void playAll(final Context context, final long[] list, int position,
-                               final long sourceId, final AppUtils.IdType sourceType,
-                               final boolean forceShuffle) {
-        if (list == null || list.length == 0 || mService == null) {
+    public static void playAll(final List<MusicPlaybackTrack> list, int position,
+                               final boolean forceShuffle) {    //播放全部歌曲
+        if (list == null || list.size() == 0 || mService == null) {
             return;
         }
+
+        long[] idsArray = new long[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            idsArray[i] = list.get(i).id;
+        }
+
         try {
             if (forceShuffle) {
                 mService.setShuffleMode(MusicService.SHUFFLE_NORMAL);
             }
             final long currentId = mService.getAudioId();
             final int currentQueuePosition = getQueuePosition();
-            if (position != -1 && currentQueuePosition == position && currentId == list[position]) {
+            if (position != -1 && currentQueuePosition == position && currentId == idsArray[position]) {
                 final long[] playlist = getQueue();
-                if (Arrays.equals(list, playlist)) {
+                if (Arrays.equals(idsArray, playlist)) {
                     mService.play();
                     return;
                 }
@@ -475,7 +488,7 @@ public class MusicPlayer {
             if (position < 0) {
                 position = 0;
             }
-            mService.open(list, forceShuffle ? -1 : position, sourceId, sourceType.mId);
+            mService.open(list, forceShuffle ? -1 : position);
             mService.play();
         } catch (final RemoteException ignored) {
         } catch (IllegalStateException e) {
@@ -483,12 +496,15 @@ public class MusicPlayer {
         }
     }
 
-    public static void playNext(Context context, final long[] list, final long sourceId, final AppUtils.IdType sourceType) {
+
+    public static void playNext(Context context, final List<MusicPlaybackTrack> list) {
         if (mService == null) {
             return;
         }
         try {
-            mService.enqueue(list, MusicService.NEXT, sourceId, sourceType.mId);
+            mService.enqueue(list, MusicService.NEXT);
+            final String message = makeLabel(context, R.string.next_play, list.size());
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
         } catch (final RemoteException ignored) {
         }
     }
@@ -502,10 +518,11 @@ public class MusicPlayer {
         try {
             mService.setShuffleMode(MusicService.SHUFFLE_NORMAL);
             if (getQueuePosition() == 0 && mService.getAudioId() == trackList[0] && Arrays.equals(trackList, getQueue())) {
-                    mService.play();
-                    return;
+                mService.play();
+                return;
             }
-            mService.open(trackList, -1, -1, AppUtils.IdType.NA.mId);
+            //TODO 从数据库存取当前播放列表
+            mService.open(null, -1);
             mService.play();
             cursor.close();
         } catch (final RemoteException ignored) {
@@ -646,13 +663,14 @@ public class MusicPlayer {
         }
     }
 
-    public static void addToQueue(final Context context, final long[] list, long sourceId,
-                                  AppUtils.IdType sourceType) {
+    public static void addToQueue(final Context context, final List<MusicPlaybackTrack> list) {
         if (mService == null) {
             return;
         }
         try {
-            mService.enqueue(list, MusicService.LAST, sourceId, sourceType.mId);
+            mService.enqueue(list, MusicService.LAST);
+            //final String message = makeLabel(context, R.string.add_queue, list.size());
+            //Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
         } catch (final RemoteException ignored) {
         }
     }
@@ -690,6 +708,8 @@ public class MusicPlayer {
             makeInsertItems(ids, offSet, 1000, base);
             numinserted += resolver.bulkInsert(uri, mContentValuesCache);
         }
+        final String message = context.getResources().getString(R.string.add_playlist);
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
     }
 
     public static void makeInsertItems(final long[] ids, final int offset, int len, final int base) {
@@ -743,6 +763,60 @@ public class MusicPlayer {
         }
     }
 
+    public static final void play(final String path){
+        if (mService != null) {
+            try {
+                mService.openFile(path);
+            } catch (final RemoteException ignored) {
+            }
+        }
+    }
+
+    public static final void play(MusicPlaybackTrack track){
+        List<MusicPlaybackTrack> list = new ArrayList<>(1);
+        list.add(track);
+        play(track);
+    }
+
+    public static final void play(final List<MusicPlaybackTrack> list){
+        play(list,0);
+    }
+
+    public static final void play(final List<MusicPlaybackTrack> list, int position){
+        playQueue(list,position);
+    }
+
+    public static final void playQueue(final List<MusicPlaybackTrack> list, int position){
+        if (list == null || list.size() == 0 || mService == null) {
+            return;
+        }
+
+        long[] idsArray = new long[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            idsArray[i] = list.get(i).id;
+        }
+
+        try {
+            final long currentId = mService.getAudioId();
+            final int currentQueuePosition = getQueuePosition();
+            if (position != -1 && currentQueuePosition == position && currentId == idsArray[position]) {
+                final long[] playlist = getQueue();
+                if (Arrays.equals(idsArray, playlist)) {
+                    mService.play();
+                    return;
+                }
+            }
+            if (position < 0) {
+                position = 0;
+            }
+            mService.open(list,position);
+        } catch (final RemoteException ignored) {
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     public static final class ServiceBinder implements ServiceConnection {
         private final ServiceConnection mCallback;
         private final Context mContext;
@@ -755,11 +829,10 @@ public class MusicPlayer {
 
         @Override
         public void onServiceConnected(final ComponentName className, final IBinder service) {
-            mService = IRemoteMusicService.Stub.asInterface(service);
+            mService = IMusicService.Stub.asInterface(service);
             if (mCallback != null) {
                 mCallback.onServiceConnected(className, service);
             }
-            initPlaybackServiceWithSettings(mContext);
         }
 
         @Override
