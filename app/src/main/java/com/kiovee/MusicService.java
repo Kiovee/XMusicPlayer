@@ -2231,13 +2231,6 @@ public class MusicService extends Service {
             OkHttpClient okHttpClient = builder.build();
 
             JSONObject req = new JSONObject();
-            req.put("id", String.valueOf((new Random().nextInt(999999))));
-            req.put("version", Constants.VERSION);
-            req.put("appid", "iMyyule");
-            req.put("source", Constants.DEVICE);
-            req.put("type", "myyule_get_song_play");
-            req.put("action", "request");
-            req.put("resId", resId);
 
             final RequestBody requestBody = RequestBody.create(JSON, req.toJSONString());
 
